@@ -88,6 +88,7 @@ class GeneticAlgorithm:
                 crossover_func = partial_mapped_crossover, mutation_func = invers_mutation,
                 population_rate = 0.7, crossover_rate = 0.2):
 
+        #Setting the size of population, crossover and mutation
         self.total_size = total_size
         self.population_size = int(total_size * population_rate)
         self.crossover_size = int(total_size * crossover_rate)
@@ -96,44 +97,39 @@ class GeneticAlgorithm:
         self.mutation_size = self.total_size - self.population_size - self.crossover_size
 
         self.numTasks = numTasks
-        self.cost = cost
 
+        #function pointer
+        self.cost = cost
         self.crossover = crossover_func
         self.mutation = mutation_func
-        '''
-        print("population_size: ", self.population_size)
-        print("crossover_size: ", self.crossover_size)
-        print("mutation_size: ", self.mutation_size)
-        print("numTasks: ", self.numTasks)
-        '''
 
     def initialize(self):
         self.chromosomes = []
         self.fitness = []
-        self.mapping = []
         
-        #generate initial population
+        #Generate initial population
         for i in range(self.population_size):
             self.chromosomes.append([])
             for j in range(self.numTasks):
                 self.chromosomes[i].append(j)
             random.shuffle(self.chromosomes[i])
         
-        #generate space to store the result of crossover and mutation
+        #Generate space to store the result of crossover and mutation
         for i in range(self.population_size, self.total_size):
             self.chromosomes.append([])
             for j in range(self.numTasks):
                 self.chromosomes[i].append(-1)
-    
-    def sort_func(self, e):
-        return e[1]
 
     def count_fitness(self):
         self.fitness.clear()
         for i in range(self.total_size):
             self.fitness.append([i, 1 / self.cost(self.chromosomes[i])])
 
+    def sort_func(self, e):
+        return e[1]
+
     def select_next_generation(self):
+        #Sort fitness in decreased.
         self.fitness.sort(reverse = True ,key = self.sort_func)
         
         selected_chromosomes = []
@@ -144,43 +140,39 @@ class GeneticAlgorithm:
         for i in range(self.population_size):
             self.chromosomes[i] = selected_chromosomes[i]
 
-    def get_best(self):
-        return self.chromosomes[0]
-
     def evolution(self, times = 100):
         self.initialize()
+
         for t in range(times):
             self.crossover(self.chromosomes, self.population_size, self.crossover_size)
             self.mutation(self.chromosomes, self.population_size + self.crossover_size, self.mutation_size)
             self.count_fitness()
             self.select_next_generation()
+        
+        return self.chromosomes[0]
     
     def show_chromosomes(self):
-        print("Population")
+        print("Population (", self.population_size, "):")
         for i in range(self.population_size):
             print(i, self.chromosomes[i])
-        print("Crossover")
+        print("Crossover (", self.crossover_size, "):")
         for i in range(self.population_size , self.population_size + self.crossover_size):
             print(i, self.chromosomes[i])
-        print("Mutation")
+        print("Mutation (", self.mutation_size, "):")
         for i in range(self.total_size - self.mutation_size, self.total_size):
             print(i, self.chromosomes[i])
 
 if __name__ == '__main__':
-    input = [
-    [10, 20, 23, 4],
-    [15, 13, 6, 25],
-    [ 2, 22, 35, 34],
-    [12, 3, 14, 17]
-    ]
+
+    with open('input.json', 'r') as file:
+        data = json.load(file)
+        for key in data:
+            input = data[key]
     
-    solver = Problem(input)
-    ga = GeneticAlgorithm(solver.numTasks, solver.cost, 50)
+            solver = Problem(input)
+            ga = GeneticAlgorithm(solver.numTasks, solver.cost, 50)
 
-    ga.initialize()
-    ga.evolution(times = 10)
-    #ga.show_chromosomes()
+            yourAssignment = ga.evolution(times = 10)
 
-    yourAssignment = ga.get_best()
-    print('Assignment:', yourAssignment) # print 出分配結果
-    print('Cost:', solver.cost(yourAssignment)) # print 出 cost 是多少
+            print('Assignment:', yourAssignment) # print 出分配結果
+            print('Cost:', solver.cost(yourAssignment)) # print 出 cost 是多少
