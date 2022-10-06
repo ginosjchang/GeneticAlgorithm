@@ -1,6 +1,4 @@
-import numpy as np
 import random
-from enum import Enum
 import json
 
 class Problem:
@@ -10,8 +8,11 @@ class Problem:
     
     def cost(self, ans):
         totalTime = 0
-        for task, agent in enumerate(ans):
-            totalTime += self.input[task][agent]
+        try:
+            for task, agent in enumerate(ans):
+                totalTime += self.input[task][agent]
+        except:
+            totalTime = -1
         return totalTime
 
 def partial_mapped_crossover(chromosomes, population_size, crossover_size):
@@ -142,6 +143,8 @@ class GeneticAlgorithm:
 
     def evolution(self, times = 100):
         self.initialize()
+        self.count_fitness()
+        self.select_next_generation()
 
         for t in range(times):
             self.crossover(self.chromosomes, self.population_size, self.crossover_size)
@@ -162,17 +165,23 @@ class GeneticAlgorithm:
         for i in range(self.total_size - self.mutation_size, self.total_size):
             print(i, self.chromosomes[i])
 
-if __name__ == '__main__':
-
-    with open('input.json', 'r') as file:
+def json_read(filename):
+    input = []
+    with open(filename, 'r') as file:
         data = json.load(file)
         for key in data:
-            input = data[key]
-    
-            solver = Problem(input)
-            ga = GeneticAlgorithm(solver.numTasks, solver.cost, 50)
+            input.append(data[key].copy())
+    return input
 
-            yourAssignment = ga.evolution(times = 10)
+if __name__ == '__main__':
 
-            print('Assignment:', yourAssignment) # print 出分配結果
-            print('Cost:', solver.cost(yourAssignment)) # print 出 cost 是多少
+    input = json_read('input.json')
+
+    for data in input:
+        solver = Problem(data)
+        ga = GeneticAlgorithm(solver.numTasks, solver.cost, 50)
+
+        yourAssignment = ga.evolution(times = 10)
+
+        print('Assignment:', yourAssignment) # print 出分配結果
+        print('Cost:', solver.cost(yourAssignment)) # print 出 cost 是多少
