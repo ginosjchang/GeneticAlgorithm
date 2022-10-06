@@ -1,5 +1,7 @@
 import random
 import json
+import matplotlib.pyplot as plt
+import math
 
 class Problem:
     def __init__(self, input):
@@ -8,105 +10,33 @@ class Problem:
     
     def cost(self, ans):
         totalTime = 0
-        try:
-            for task, agent in enumerate(ans):
-                totalTime += self.input[task][agent]
-        except:
-            totalTime = -1
+        if -1 in ans : return -1
+        for task, agent in enumerate(ans):
+            totalTime += self.input[task][agent]
         return totalTime
 
-def partial_mapped_crossover(chromosomes, population_size, crossover_size):
-    numTasks = len(chromosomes[0])
-
-    for offset in range(0, crossover_size, 2):
-        mapping = []
-        for i in range(numTasks):
-            mapping.append(-1)
-
-        p1 = random.randint(0, population_size)
-        p2 = random.randint(0, population_size)
-        c1 = population_size + offset
-        c2 = c1 + 1
-
-        rand1 = random.randint(0, numTasks - 2)
-        rand2 = random.randint(rand1 + 1, numTasks - 1)
-
-        for i in range(rand1, rand2 + 1):
-            c1_gene = chromosomes[p1][i]
-            c2_gene = chromosomes[p2][i]
-
-            if c1_gene == c2_gene: continue
-            elif mapping[c1_gene] == -1 and mapping[c2_gene] == -1:
-                mapping[c1_gene] = c2_gene
-                mapping[c2_gene] = c1_gene
-            elif mapping[c1_gene] == -1:
-                mapping[c1_gene] = mapping[c2_gene]
-                mapping[c2_gene] = -1
-                mapping[mapping[c1_gene]] = c1_gene
-            elif mapping[c2_gene] == -1:
-                mapping[mapping[c1_gene]] = c2_gene
-                mapping[c2_gene] = mapping[c1_gene]
-                mapping[c1_gene] = -1
-            else:
-                mapping[mapping[c1_gene]] = mapping[c2_gene]
-                mapping[mapping[c2_gene]] = mapping[c1_gene]
-                mapping[c1_gene] = -1
-                mapping[c2_gene] = -1
-
-        for i in range(numTasks):
-            if(i>=rand1 and i<=rand2):
-                chromosomes[c1][i] =  chromosomes[p2][i]
-                chromosomes[c2][i] =  chromosomes[p1][i]
-            else:
-                if(mapping[chromosomes[p1][i]] >=0):
-                    chromosomes[c1][i] = mapping[chromosomes[p1][i]]
-                else:
-                    chromosomes[c1][i] = chromosomes[p1][i]        
-                    
-                if(mapping[chromosomes[p2][i]] >=0):
-                    chromosomes[c2][i] = mapping[chromosomes[p2][i]]
-                else:
-                    chromosomes[c2][i] = chromosomes[p2][i]
-
-def invers_mutation(chromosomes, population_size, mutation_size):
-    numTasks = len(chromosomes[0])
-
-    for offset in range(mutation_size):
-        p = random.randint(0, population_size)
-        c = population_size + offset
-
-        rand1 = random.randint(0, numTasks-2)
-        rand2 = random.randint(rand1 + 1, numTasks - 1)
-        for i in range(numTasks):
-            if(i < rand1 or i > rand2):
-                chromosomes[c][i] = chromosomes[p][i]
-            else:
-                index = rand2 - (i - rand1)
-                chromosomes[c][i] = chromosomes[p][index]
-
 class GeneticAlgorithm:
-    def __init__(self, numTasks, cost, total_size, 
-                crossover_func = partial_mapped_crossover, mutation_func = invers_mutation,
-                population_rate = 0.7, crossover_rate = 0.2):
+    def __init__(self, numTasks, cost, population_size, crossover_rate, mutation_rate):
+        #store input arg
+        self.numTasks = numTasks
+        self.cost = cost
+        self.crossover_rate = crossover_rate
+        self.mutation_rate = mutation_rate
 
-        #Setting the size of population, crossover and mutation
-        self.total_size = total_size
-        self.population_size = int(total_size * population_rate)
-        self.crossover_size = int(total_size * crossover_rate)
+        #determine each size
+        self.population_size = population_size
+        self.crossover_size = int(self.population_size * crossover_rate)
         if self.crossover_size % 2 == 1:
             self.crossover_size -= 1
-        self.mutation_size = self.total_size - self.population_size - self.crossover_size
+        self.mutation_size = int(self.population_size * mutation_rate)
+        self.total_size = self.population_size + self.crossover_size + self.mutation_size
 
-        self.numTasks = numTasks
-
-        #function pointer
-        self.cost = cost
-        self.crossover = crossover_func
-        self.mutation = mutation_func
-
-    def initialize(self):
         self.chromosomes = []
         self.fitness = []
+        self.record =[]
+
+    def initialize(self):
+        self.chromosomes.clear()
         
         #Generate initial population
         for i in range(self.population_size):
@@ -121,15 +51,83 @@ class GeneticAlgorithm:
             for j in range(self.numTasks):
                 self.chromosomes[i].append(-1)
 
+    def _partial_mapped_crossover(self, parent1, parent2, child1, child2):
+        rand1 = random.randint(0, self.numTasks - 2)
+        rand2 = random.randint(rand1 + 1, self.numTasks - 1)
+
+        mapping = []
+
+        for i in range(self.numTasks):
+            mapping.append(-1)
+
+        for i in range(rand1, rand2 + 1):
+            gene1 = parent1[i]
+            gene2 = parent2[i]
+
+            if gene1 == gene2: continue
+            elif mapping[gene1] == -1 and mapping[gene2] == -1:
+                mapping[gene1] = gene2
+                mapping[gene2] = gene1
+            elif mapping[gene1] == -1:
+                mapping[gene1] = mapping[gene2]
+                mapping[gene2] = -1
+                mapping[mapping[gene1]] = gene1
+            elif mapping[gene2] == -1:
+                mapping[mapping[gene1]] = gene2
+                mapping[gene2] = mapping[gene1]
+                mapping[gene1] = -1
+            else:
+                mapping[mapping[gene1]] = mapping[gene2]
+                mapping[mapping[gene2]] = mapping[gene1]
+                mapping[gene1] = -1
+                mapping[gene2] = -1
+        
+        for i in range(self.numTasks):
+            if i >= rand1 and i <= rand2:
+                child1[i] =  parent2[i]
+                child2[i] =  parent1[i]
+            else:
+                if(mapping[parent1[i]] >=0): 
+                    child1[i] = mapping[parent1[i]]
+                else: 
+                    child1[i] = parent1[i]        
+                if(mapping[parent2[i]] >=0):
+                    child2[i] = mapping[parent2[i]]
+                else:
+                    child2[i] = parent2[i]
+        
+    def _invers_mutation(self, chromosome):
+        rand1 = random.randint(0, self.numTasks - 2)
+        rand2 = random.randint(rand1 + 1, self.numTasks - 1)
+        
+        origin = chromosome.copy()
+        for i in range(self.numTasks):
+            if i < rand1 or i > rand2:
+                chromosome[i] = origin[i]
+            else:
+                index = rand2 - (i - rand1)
+                chromosome[i] = origin[index]
+    
+    def fitness_func(self, chromosome):
+        return 1 / self.cost(chromosome)
+    
     def count_fitness(self):
         self.fitness.clear()
         for i in range(self.total_size):
-            self.fitness.append([i, 1 / self.cost(self.chromosomes[i])])
+            self.fitness.append([i, self.fitness_func(self.chromosomes[i])])
+    
+    #Virtual
+    def crossover(self):
+        pass
 
+    #Virtual
+    def mutation(self):
+        pass
+    
     def sort_func(self, e):
         return e[1]
 
-    def select_next_generation(self):
+    def select(self):
         #Sort fitness in decreased.
         self.fitness.sort(reverse = True ,key = self.sort_func)
         
@@ -137,33 +135,97 @@ class GeneticAlgorithm:
 
         for i in range(self.population_size):
             selected_chromosomes.append(self.chromosomes[self.fitness[i][0]].copy())
-        
+
         for i in range(self.population_size):
             self.chromosomes[i] = selected_chromosomes[i]
+        
+        self.record.append(self.cost(self.chromosomes[0]))
 
     def evolution(self, times = 100):
-        self.initialize()
-        self.count_fitness()
-        self.select_next_generation()
-
-        for t in range(times):
-            self.crossover(self.chromosomes, self.population_size, self.crossover_size)
-            self.mutation(self.chromosomes, self.population_size + self.crossover_size, self.mutation_size)
+        try:
+            self.initialize()
             self.count_fitness()
-            self.select_next_generation()
-        
+            self.select()
+
+            for t in range(times):
+                self.crossover()
+                self.mutation()
+                self.count_fitness()
+                self.select()
+        except:
+            print("exception")
+            return 0
         return self.chromosomes[0]
     
     def show_chromosomes(self):
-        print("Population (", self.population_size, "):")
+        print("Population size : ", self.population_size)
+        print("Crossover size : ", self.crossover_size)
+        print("Mutation size :", self.mutation_size)
+        print("Population")
         for i in range(self.population_size):
             print(i, self.chromosomes[i])
-        print("Crossover (", self.crossover_size, "):")
+        print("Crossover")
         for i in range(self.population_size , self.population_size + self.crossover_size):
             print(i, self.chromosomes[i])
-        print("Mutation (", self.mutation_size, "):")
+        print("Mutation")
         for i in range(self.total_size - self.mutation_size, self.total_size):
-            print(i, self.chromosomes[i])
+            print(i, self.chromosomes[i])    
+
+class Struct1(GeneticAlgorithm):
+    def __init__(self, numTasks, cost, population_size = 50, crossover_rate = 0.2, mutation_rate = 0.1):
+        super().__init__(numTasks, cost, population_size, crossover_rate, mutation_rate)
+
+    def crossover(self):
+        child = self.population_size
+        for i in range(int(self.crossover_size / 2)):
+            parent1 = self.chromosomes[random.randint(0, self.population_size - 1)]
+            parent2 = self.chromosomes[random.randint(0, self.population_size - 1)]
+            self._partial_mapped_crossover(parent1, parent2, self.chromosomes[child], self.chromosomes[child + 1])
+            child += 2
+
+    def mutation(self):
+        for i in range(self.mutation_size):
+            self.chromosomes[self.total_size - 1 - i] = self.chromosomes[random.randint(0, self.population_size + self.crossover_size)]
+            self._invers_mutation(self.chromosomes[self.total_size - 1 - i])
+
+class Struct2(GeneticAlgorithm):
+    def __init__(self, numTasks, cost, population_size = 50, crossover_rate = 0.2, mutation_rate = 0.1):
+        super().__init__(numTasks, cost, population_size, crossover_rate, mutation_rate)
+
+    def crossover(self):
+        pop_size = self.population_size - self.crossover_size
+        child = pop_size
+
+        for i in range(int(self.crossover_size / 2)):
+            parent1 = self.chromosomes[random.randint(0, pop_size - 1)]
+            parent2 = self.chromosomes[random.randint(0, pop_size - 1)]
+            self._partial_mapped_crossover(parent1, parent2, self.chromosomes[child], self.chromosomes[child + 1])
+            child += 2
+
+    def mutation(self):
+        for i in range(self.mutation_size):
+            rand = random.randint(1, self.crossover_size)
+            self._invers_mutation(self.chromosomes[self.population_size - rand])
+
+class Struct3(GeneticAlgorithm):
+    def __init__(self, numTasks, cost, population_size = 50, crossover_rate = 0.2, mutation_rate = 0.1):
+        super().__init__(numTasks, cost, population_size, crossover_rate, mutation_rate)
+
+    def crossover(self):
+        parents_size = int(self.population_size/2)
+        parents = self.chromosomes[0:parents_size].copy()
+        child = 0
+        #print(self.crossover_size)
+        for i in range(int(self.crossover_size / 2)):
+            parent1 = parents[random.randint(0, parents_size - 1)]
+            parent2 = parents[random.randint(0, parents_size - 1)]
+            self._partial_mapped_crossover(parent1, parent2, self.chromosomes[child], self.chromosomes[child + 1])
+            child += 2
+
+    def mutation(self):
+        for i in range(self.mutation_size):
+            rand = random.randint(0, self.crossover_size)
+            self._invers_mutation(self.chromosomes[self.population_size - rand])
 
 def json_read(filename):
     input = []
@@ -175,13 +237,41 @@ def json_read(filename):
 
 if __name__ == '__main__':
 
-    input = json_read('input.json')
+    #input = json_read('input.json')
+    input = [[
+        [10, 20, 23, 4],
+        [15, 13, 6, 25],
+        [ 2, 22, 35, 34],
+        [12, 3, 14, 17]
+    ]]
+
+    input = []
+
+    row = 40
+    for n in range(1):
+        temp = [[0] * row] * row
+        for i in range(row):
+            for j in range(row):
+                temp[i][j] = random.random()
+        input.append(temp)
 
     for data in input:
         solver = Problem(data)
-        ga = GeneticAlgorithm(solver.numTasks, solver.cost, 50)
+        ga1 = Struct1(solver.numTasks, solver.cost)
+        ga2 = Struct2(solver.numTasks, solver.cost)
+        ga3 = Struct3(solver.numTasks, solver.cost)
 
-        yourAssignment = ga.evolution(times = 10)
+        ga1.evolution(times = 1000)
+        ga2.evolution(times = 1000)
+        ga3.evolution(times = 1000)
+        #yourAssignment = ga1.evolution(times = 1000)
+        #ga.show_chromosomes()
 
-        print('Assignment:', yourAssignment) # print 出分配結果
-        print('Cost:', solver.cost(yourAssignment)) # print 出 cost 是多少
+        #print('Assignment:', yourAssignment) # print 出分配結果
+        #print('Cost:', solver.cost(yourAssignment)) # print 出 cost 是多少
+
+        plt.plot(ga1.record)
+        plt.plot(ga2.record)
+        plt.plot(ga3.record)
+        plt.legend(["struct1", "struct2", "struct3"])
+        plt.show()
