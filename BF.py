@@ -1,3 +1,5 @@
+# 2022 INTRODUCTION TO ARTIFICIAL INTELLIGENCE HW2 P76114545
+import json
 
 class Problem:
     def __init__(self, input):
@@ -27,19 +29,22 @@ class Problem:
             if i not in assignment:
                 assignment[num] = i
                 self.assign(num + 1, assignment.copy())
-        
+
+def json_read(filename):
+    input = []
+    with open(filename, 'r') as file:
+        data = json.load(file)
+        for key in data:
+            input.append(data[key].copy())
+    return input
 
 if __name__ == '__main__':
-    input = [
-    [10, 20, 23, 4],
-    [15, 13, 6, 25],
-    [ 2, 22, 35, 34],
-    [12, 3, 14, 17]
-    ]
-    
-    solver = Problem(input)
-    solver.assign(0,[])
+    input = json_read('input.json')
 
-    yourAssignment = solver.assignment
-    print('Assignment:', yourAssignment) # print 出分配結果
-    print('Cost:', solver.cost(yourAssignment)) # print 出 cost 是多少
+    for data in input:
+        solver = Problem(data)
+        solver.assign(0,[])
+        
+        yourAssignment = solver.assignment
+        print('Assignment:', yourAssignment) # print 出分配結果
+        print('Cost:', solver.cost(yourAssignment)) # print 出 cost 是多少    

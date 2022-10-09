@@ -1,7 +1,6 @@
+# 2022 INTRODUCTION TO ARTIFICIAL INTELLIGENCE HW2 P76114545
 import random
 import json
-import matplotlib.pyplot as plt
-import math
 
 class Problem:
     def __init__(self, input):
@@ -237,41 +236,11 @@ def json_read(filename):
 
 if __name__ == '__main__':
 
-    #input = json_read('input.json')
-    input = [[
-        [10, 20, 23, 4],
-        [15, 13, 6, 25],
-        [ 2, 22, 35, 34],
-        [12, 3, 14, 17]
-    ]]
-
-    input = []
-
-    row = 40
-    for n in range(1):
-        temp = [[0] * row] * row
-        for i in range(row):
-            for j in range(row):
-                temp[i][j] = random.random()
-        input.append(temp)
+    input = json_read('input.json')
 
     for data in input:
         solver = Problem(data)
         ga1 = Struct1(solver.numTasks, solver.cost)
-        ga2 = Struct2(solver.numTasks, solver.cost)
-        ga3 = Struct3(solver.numTasks, solver.cost)
-
-        ga1.evolution(times = 1000)
-        ga2.evolution(times = 1000)
-        ga3.evolution(times = 1000)
-        #yourAssignment = ga1.evolution(times = 1000)
-        #ga.show_chromosomes()
-
-        #print('Assignment:', yourAssignment) # print 出分配結果
-        #print('Cost:', solver.cost(yourAssignment)) # print 出 cost 是多少
-
-        plt.plot(ga1.record)
-        plt.plot(ga2.record)
-        plt.plot(ga3.record)
-        plt.legend(["struct1", "struct2", "struct3"])
-        plt.show()
+        yourAssignment = ga1.evolution(times = 10000)
+        print('Assignment:', yourAssignment) # print 出分配結果
+        print('Cost:', solver.cost(yourAssignment)) # print 出 cost 是多少
